@@ -9,6 +9,7 @@ import (
 )
 
 var addr = flag.String("addr", "localhost:8080", "address to listen on")
+var modeClose = flag.Bool("close", false, "should the server always close the incoming connection without a reply")
 
 func main() {
 	flag.Parse()
@@ -20,12 +21,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating listener: %v", err)
 	}
+	if *modeClose {
+		log.Printf("Close the incoming connections")
+		listener = alwaysClose(listener)
+	}
 
 	server := http.Server{
 		Handler: mux,
 	}
 	log.Printf("Listening on %s", *addr)
-	log.Fatal(server.Serve(alwaysClose(listener)))
+	log.Fatal(server.Serve(listener))
 }
 
 func newEchoHandler() http.Handler {

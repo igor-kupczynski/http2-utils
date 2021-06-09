@@ -39,7 +39,7 @@ Install:
 
 Profit:
 
-    $ too-many-requests -addr localhost:8080
+    $ too-many-requests -addr localhost:8080 -close
     
     # In a different terminal (or a web browser)
     $ curl localhost:8080/foo
