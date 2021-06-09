@@ -48,6 +48,7 @@ func newEchoHandler() http.Handler {
 
 func newHealthCheckHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Health check OK")
 		_, err := fmt.Fprintf(w, "OK")
 		if err != nil {
 			log.Printf("Can't write to response body: %v", err)
