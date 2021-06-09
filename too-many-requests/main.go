@@ -8,11 +8,15 @@ import (
 	"net/http"
 )
 
-var addr = flag.String("addr", "localhost:8080", "address to listen on")
-var modeClose = flag.Bool("close", false, "should the server always close the incoming connection without a reply")
-
 func main() {
+	var addr = flag.String("addr", "localhost:8080", "address to listen on")
+	var healthCheck = flag.String("healthCheck", "", "extra address to listen on for health checks")
+	var modeClose = flag.Bool("close", false, "should the server always close the incoming connection without a reply")
 	flag.Parse()
+
+	if *healthCheck != "" {
+		go serveHealthCheck(*healthCheck)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", newEchoHandler())
@@ -36,6 +40,15 @@ func main() {
 func newEchoHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+		if err != nil {
+			log.Printf("Can't write to response body: %v", err)
+		}
+	})
+}
+
+func newHealthCheckHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := fmt.Fprintf(w, "OK")
 		if err != nil {
 			log.Printf("Can't write to response body: %v", err)
 		}
@@ -67,4 +80,20 @@ func (a *alwaysCloseListener) Close() error {
 
 func (a *alwaysCloseListener) Addr() net.Addr {
 	return a.delegate.Addr()
+}
+
+func serveHealthCheck(hcAddr string) {
+	mux := http.NewServeMux()
+	mux.Handle("/", newHealthCheckHandler())
+
+	listener, err := net.Listen("tcp4", hcAddr)
+	if err != nil {
+		log.Fatalf("Error creating health check listener: %v", err)
+	}
+
+	server := http.Server{
+		Handler: mux,
+	}
+	log.Printf("Health check on %s", hcAddr)
+	log.Fatal(server.Serve(listener))
 }
