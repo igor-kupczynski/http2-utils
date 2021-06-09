@@ -27,3 +27,19 @@ Profit:
       notAfter=Oct 21 14:44:26 2029 GMT
       X509v3 Subject Alternative Name: 
           DNS:example.com, DNS:*.example.com
+
+
+## Too many requests
+
+Always close an incoming connection
+
+Install:
+
+    $  go get github.com/igor-kupczynski/http2-utils/too-many-requests
+
+Profit:
+
+    $ too-many-requests -addr localhost:8080
+    
+    # In a different terminal (or a web browser)
+    $ curl localhost:8080/foo
