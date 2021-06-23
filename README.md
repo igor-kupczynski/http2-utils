@@ -1,5 +1,18 @@
 # http2-utils
 
+## Echo server for these random tests
+
+Install:
+
+    $  go get github.com/igor-kupczynski/http2-utils/echo-server
+
+Profit:
+
+    $ echo-server -addr :8080 -healthcheck localhost:8081
+    
+    # In a different terminal (or a web browser)
+    $ curl localhost:8080/foo
+
 ## HTTP v2 CLI
 
 Install:
