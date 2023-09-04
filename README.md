@@ -30,13 +30,13 @@ Profit:
 
 Install:
 
-    ❯  go get github.com/igor-kupczynski/http2-utils/selfsigned-gen
+    ❯  go install github.com/igor-kupczynski/http2-utils/selfsigned-gen@latest
 
 Profit:
 
     ❯ selfsigned-gen -domains "example.com,*.example.com"
     ❯ openssl x509 -subject -enddate -ext subjectAltName  -noout -in domain.pem
-      subject=O = "Example, Inc."
+      subject=O = "Example, Inc.", CN = example.com 
       notAfter=Oct 21 14:44:26 2029 GMT
       X509v3 Subject Alternative Name: 
           DNS:example.com, DNS:*.example.com

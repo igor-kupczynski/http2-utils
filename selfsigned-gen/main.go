@@ -84,11 +84,16 @@ func generateCertForDomain(caTemplate *x509.Certificate, caKey *rsa.PrivateKey, 
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 	}
 
+	gotCN := false
 	for _, h := range hosts {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
 			template.DNSNames = append(template.DNSNames, h)
+			if !gotCN {
+				template.Subject.CommonName = h
+				gotCN = true
+			}
 		}
 	}
 
