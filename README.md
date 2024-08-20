@@ -70,17 +70,29 @@ We have a set of certs in client-auth/certs:
 
 ### Server
 
-    ❯ go run client-auth/server.go
-
+```sh
+go run client-auth/server.go
+```
 
 ### Client
 
 Without mTLS:
+```sh
+curl --cacert client-auth/certs/ca.pem https://localhost:8443
+```
 
-    ❯ curl --cacert client-auth/certs/ca.pem https://localhost:8443
-    Hello, stranger! Here's your random number: 8674665223082153551
-    
+```
+Hello, stranger! Here's your random number: 8674665223082153551
+```
+
 With mTLS:
+```sh
+curl --cacert client-auth/certs/ca.pem \
+  --cert client-auth/certs/client.pem  \
+  --key client-auth/certs/client.key \
+  https://localhost:8443
+```
 
-    ❯ curl --cacert client-auth/certs/ca.pem --cert client-auth/certs/client.pem  --key client-auth/certs/client.key https://localhost:8443
-    Hello, client.local! Here's your random number: 3916589616287113937
+```
+Hello, client.local! Here's your random number: 3916589616287113937
+```
