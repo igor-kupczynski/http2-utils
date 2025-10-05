@@ -19,6 +19,33 @@ make build
 go build
 ```
 
+### Docker
+
+Build and run using Docker:
+
+```bash
+# Build Docker image (tagged with git SHA)
+make docker-build
+
+# Run in plain HTTP mode
+make docker-run
+
+# Or use docker directly
+docker run -p 8080:8080 docker.io/$(whoami)/echo-server:latest
+
+# Run with TLS (requires certificates in /tmp)
+make docker-run-tls
+
+# Push to registry
+make docker-push
+
+# Customize registry and image name
+make docker-build DOCKER_REGISTRY=ghcr.io DOCKER_IMAGE_NAME=ghcr.io/myuser/echo-server
+make docker-push DOCKER_REGISTRY=ghcr.io DOCKER_IMAGE_NAME=ghcr.io/myuser/echo-server
+```
+
+The Docker image is built using a multi-stage build with a scratch base image, resulting in a minimal ~7MB image.
+
 ## Makefile Targets
 
 The project includes a Makefile for common development tasks:
@@ -38,6 +65,14 @@ make run               # Build and run in HTTP mode
 make run-tls           # Build and run in TLS mode
 make run-mtls          # Build and run in mTLS mode
 make dev-certs         # Generate test certificates
+
+# Docker targets
+make docker-info       # Display Docker image configuration
+make docker-build      # Build Docker image tagged with git SHA
+make docker-push       # Build and push Docker image to registry
+make docker-run        # Build and run Docker container in HTTP mode
+make docker-run-tls    # Build and run Docker container in TLS mode
+make docker-clean      # Remove locally built Docker images
 ```
 
 ## Quickstart
