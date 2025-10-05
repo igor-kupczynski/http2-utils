@@ -1,0 +1,24 @@
+# Binaries for programs and plugins
+echo-server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace file
+go.work
+
+# Temporary test certificates
+*.pem
+*.key
+!testdata/**/*.pem
+!testdata/**/*.key

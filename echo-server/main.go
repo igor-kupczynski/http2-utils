@@ -6,13 +6,31 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
-	"net"
 	"net/http"
 	"os"
 	"strings"
 )
+
+// Config holds the server configuration
+type Config struct {
+	Addr        string
+	HealthCheck string
+	TLSCert     string
+	TLSKey      string
+	MTLSMode    string
+	ClientCAs   string
+}
+
+// Server represents the echo server
+type Server struct {
+	config       Config
+	mainServer   *http.Server
+	healthServer *http.Server
+	logger       *log.Logger
+}
 
 func main() {
 	var addr = flag.String("addr", ":8080", "address to listen on")
@@ -23,29 +41,54 @@ func main() {
 	var clientCAs = flag.String("clientCAs", "", "path to PEM bundle of client CAs")
 	flag.Parse()
 
-	// Validate TLS flags
-	if (*tlsCert != "" && *tlsKey == "") || (*tlsCert == "" && *tlsKey != "") {
-		log.Fatal("Error: both -tlsCert and -tlsKey must be provided together")
+	config := Config{
+		Addr:        *addr,
+		HealthCheck: *healthCheck,
+		TLSCert:     *tlsCert,
+		TLSKey:      *tlsKey,
+		MTLSMode:    *mtlsMode,
+		ClientCAs:   *clientCAs,
 	}
 
-	tlsEnabled := *tlsCert != "" && *tlsKey != ""
+	srv, err := NewServer(config, log.Default())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// NewServer creates a new server with the given configuration
+func NewServer(config Config, logger *log.Logger) (*Server, error) {
+	if logger == nil {
+		logger = log.New(io.Discard, "", 0)
+	}
+
+	// Validate TLS flags
+	if (config.TLSCert != "" && config.TLSKey == "") || (config.TLSCert == "" && config.TLSKey != "") {
+		return nil, fmt.Errorf("Error: both -tlsCert and -tlsKey must be provided together")
+	}
+
+	tlsEnabled := config.TLSCert != "" && config.TLSKey != ""
 
 	// Validate mTLS mode
 	var clientAuthType tls.ClientAuthType
 	var mtlsModeNormalized string
-	if *mtlsMode != "" && *mtlsMode != "none" {
+	if config.MTLSMode != "" && config.MTLSMode != "none" {
 		if !tlsEnabled {
-			log.Fatal("Error: -mtlsMode requires -tlsCert and -tlsKey to be set")
+			return nil, fmt.Errorf("Error: -mtlsMode requires -tlsCert and -tlsKey to be set")
 		}
-		switch *mtlsMode {
+		switch config.MTLSMode {
 		case "request":
 			clientAuthType = tls.RequestClientCert
 			mtlsModeNormalized = "request"
 		case "verify_if_given":
 			clientAuthType = tls.VerifyClientCertIfGiven
 			mtlsModeNormalized = "verify_if_given"
-			if *clientCAs == "" {
-				log.Fatal("Error: -mtlsMode=verify_if_given requires -clientCAs")
+			if config.ClientCAs == "" {
+				return nil, fmt.Errorf("Error: -mtlsMode=verify_if_given requires -clientCAs")
 			}
 		case "require_any":
 			clientAuthType = tls.RequireAnyClientCert
@@ -53,11 +96,11 @@ func main() {
 		case "require_and_verify":
 			clientAuthType = tls.RequireAndVerifyClientCert
 			mtlsModeNormalized = "require_and_verify"
-			if *clientCAs == "" {
-				log.Fatal("Error: -mtlsMode=require_and_verify requires -clientCAs")
+			if config.ClientCAs == "" {
+				return nil, fmt.Errorf("Error: -mtlsMode=require_and_verify requires -clientCAs")
 			}
 		default:
-			log.Fatalf("Error: invalid -mtlsMode=%q. Allowed values: request, verify_if_given, require_any, require_and_verify", *mtlsMode)
+			return nil, fmt.Errorf("Error: invalid -mtlsMode=%q. Allowed values: request, verify_if_given, require_any, require_and_verify", config.MTLSMode)
 		}
 	}
 
@@ -67,9 +110,9 @@ func main() {
 	var mainTLSConfig *tls.Config
 	var caCount int
 	if tlsEnabled {
-		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+		cert, err := tls.LoadX509KeyPair(config.TLSCert, config.TLSKey)
 		if err != nil {
-			log.Fatalf("Error loading server certificate: %v", err)
+			return nil, fmt.Errorf("Error loading server certificate: %v", err)
 		}
 
 		mainTLSConfig = &tls.Config{
@@ -81,14 +124,14 @@ func main() {
 			mainTLSConfig.ClientAuth = clientAuthType
 
 			// Load client CAs for verifying modes
-			if *clientCAs != "" {
-				caPEM, err := os.ReadFile(*clientCAs)
+			if config.ClientCAs != "" {
+				caPEM, err := os.ReadFile(config.ClientCAs)
 				if err != nil {
-					log.Fatalf("Error reading client CAs: %v", err)
+					return nil, fmt.Errorf("Error reading client CAs: %v", err)
 				}
 				caPool := x509.NewCertPool()
 				if !caPool.AppendCertsFromPEM(caPEM) {
-					log.Fatal("Error: failed to parse any CA certificates from -clientCAs")
+					return nil, fmt.Errorf("Error: failed to parse any CA certificates from -clientCAs")
 				}
 				mainTLSConfig.ClientCAs = caPool
 
@@ -107,10 +150,10 @@ func main() {
 
 	// Build TLS config for health check (TLS but never mTLS)
 	var healthTLSConfig *tls.Config
-	if tlsEnabled && *healthCheck != "" {
-		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+	if tlsEnabled && config.HealthCheck != "" {
+		cert, err := tls.LoadX509KeyPair(config.TLSCert, config.TLSKey)
 		if err != nil {
-			log.Fatalf("Error loading server certificate for health check: %v", err)
+			return nil, fmt.Errorf("Error loading server certificate for health check: %v", err)
 		}
 
 		healthTLSConfig = &tls.Config{
@@ -120,40 +163,96 @@ func main() {
 		}
 	}
 
-	// Start health check server
-	if *healthCheck != "" {
-		go serveHealthCheck(*healthCheck, healthTLSConfig)
-	}
-
 	// Setup main server
 	mux := http.NewServeMux()
 	mux.Handle("/", newEchoHandler())
 	mux.Handle("/client-certs", newClientCertsHandler())
 
-	listener, err := net.Listen("tcp", *addr)
-	if err != nil {
-		log.Fatalf("Error creating listener: %v", err)
+	mainServer := &http.Server{
+		Addr:      config.Addr,
+		Handler:   mux,
+		TLSConfig: mainTLSConfig,
 	}
 
-	// Wrap with TLS if enabled
-	if mainTLSConfig != nil {
-		listener = tls.NewListener(listener, mainTLSConfig)
-	}
+	// Setup health check server
+	var healthServer *http.Server
+	if config.HealthCheck != "" {
+		healthMux := http.NewServeMux()
+		healthMux.Handle("/", newHealthCheckHandler(logger))
 
-	server := http.Server{
-		Handler: mux,
+		healthServer = &http.Server{
+			Addr:      config.HealthCheck,
+			Handler:   healthMux,
+			TLSConfig: healthTLSConfig,
+		}
 	}
 
 	// Log startup configuration
-	logMainServerConfig(*addr, tlsEnabled, mtlsEnabled, mtlsModeNormalized, *tlsCert, *tlsKey, *clientCAs, caCount)
-	if *healthCheck != "" {
-		logHealthServerConfig(*healthCheck, tlsEnabled)
+	logMainServerConfig(logger, config.Addr, tlsEnabled, mtlsEnabled, mtlsModeNormalized, config.TLSCert, config.TLSKey, config.ClientCAs, caCount)
+	if config.HealthCheck != "" {
+		logHealthServerConfig(logger, config.HealthCheck, tlsEnabled)
 	}
 
-	log.Fatal(server.Serve(listener))
+	return &Server{
+		config:       config,
+		mainServer:   mainServer,
+		healthServer: healthServer,
+		logger:       logger,
+	}, nil
 }
 
-func logMainServerConfig(addr string, tlsEnabled, mtlsEnabled bool, mtlsMode, tlsCert, tlsKey, clientCAs string, caCount int) {
+// ListenAndServe starts the server and blocks until an error occurs
+func (s *Server) ListenAndServe() error {
+	// Start health check server in background if configured
+	if s.healthServer != nil {
+		go func() {
+			var err error
+			if s.healthServer.TLSConfig != nil {
+				err = s.healthServer.ListenAndServeTLS("", "")
+			} else {
+				err = s.healthServer.ListenAndServe()
+			}
+			if err != nil && err != http.ErrServerClosed {
+				s.logger.Printf("Health check server error: %v", err)
+			}
+		}()
+	}
+
+	// Start main server
+	var err error
+	if s.mainServer.TLSConfig != nil {
+		err = s.mainServer.ListenAndServeTLS("", "")
+	} else {
+		err = s.mainServer.ListenAndServe()
+	}
+	return err
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown() error {
+	if s.healthServer != nil {
+		s.healthServer.Close()
+	}
+	if s.mainServer != nil {
+		return s.mainServer.Close()
+	}
+	return nil
+}
+
+// Addr returns the address the main server is listening on
+func (s *Server) Addr() string {
+	return s.mainServer.Addr
+}
+
+// HealthAddr returns the address the health check server is listening on
+func (s *Server) HealthAddr() string {
+	if s.healthServer != nil {
+		return s.healthServer.Addr
+	}
+	return ""
+}
+
+func logMainServerConfig(logger *log.Logger, addr string, tlsEnabled, mtlsEnabled bool, mtlsMode, tlsCert, tlsKey, clientCAs string, caCount int) {
 	mode := "plain"
 	if mtlsEnabled {
 		mode = "mtls"
@@ -171,15 +270,15 @@ func logMainServerConfig(addr string, tlsEnabled, mtlsEnabled bool, mtlsMode, tl
 			parts = append(parts, fmt.Sprintf("clientCAs=%s caCount=%d", clientCAs, caCount))
 		}
 	}
-	log.Println(strings.Join(parts, " "))
+	logger.Println(strings.Join(parts, " "))
 }
 
-func logHealthServerConfig(addr string, tlsEnabled bool) {
+func logHealthServerConfig(logger *log.Logger, addr string, tlsEnabled bool) {
 	mode := "plain"
 	if tlsEnabled {
 		mode = "tls"
 	}
-	log.Printf("Health server: addr=%s mode=%s", addr, mode)
+	logger.Printf("Health server: addr=%s mode=%s", addr, mode)
 }
 
 func newEchoHandler() http.Handler {
@@ -244,34 +343,14 @@ func newClientCertsHandler() http.Handler {
 	})
 }
 
-func newHealthCheckHandler() http.Handler {
+func newHealthCheckHandler(logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Health check OK")
+		logger.Printf("Health check OK")
 		_, err := fmt.Fprintf(w, "OK")
 		if err != nil {
-			log.Printf("Can't write to response body: %v", err)
+			logger.Printf("Can't write to response body: %v", err)
 		}
 	})
-}
-
-func serveHealthCheck(hcAddr string, tlsConfig *tls.Config) {
-	mux := http.NewServeMux()
-	mux.Handle("/", newHealthCheckHandler())
-
-	listener, err := net.Listen("tcp4", hcAddr)
-	if err != nil {
-		log.Fatalf("Error creating health check listener: %v", err)
-	}
-
-	// Wrap with TLS if config provided
-	if tlsConfig != nil {
-		listener = tls.NewListener(listener, tlsConfig)
-	}
-
-	server := http.Server{
-		Handler: mux,
-	}
-	log.Fatal(server.Serve(listener))
 }
 
 // extractNextPEM extracts the next PEM block from the input and returns it along with the remaining data
