@@ -1,10 +1,18 @@
-.PHONY: help build test test-integration test-unit clean install run run-tls run-mtls fmt vet lint coverage
+.PHONY: help build test test-integration test-unit clean install run run-tls run-mtls fmt vet lint coverage docker-build docker-push docker-run docker-clean
 
 # Default target
 .DEFAULT_GOAL := help
 
 # Binary name
 BINARY_NAME := echo-server
+
+# Docker parameters
+DOCKER_REGISTRY ?= docker.io
+DOCKER_IMAGE_NAME ?= $(DOCKER_REGISTRY)/$(shell whoami)/echo-server
+GIT_SHA := $(shell git rev-parse --short HEAD)
+DOCKER_TAG ?= $(GIT_SHA)
+DOCKER_IMAGE := $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
+DOCKER_IMAGE_LATEST := $(DOCKER_IMAGE_NAME):latest
 
 # Go parameters
 GOCMD := go
@@ -105,3 +113,50 @@ dev-test: build dev-certs ## Quick development test cycle
 	@kill `cat /tmp/echo-server.pid` 2>/dev/null || true
 	@rm -f /tmp/echo-server.pid /tmp/echo-server.log
 	@echo "Development test complete"
+
+# Docker targets
+.PHONY: docker-build docker-push docker-run docker-clean docker-info
+
+docker-info: ## Display Docker image information
+	@echo "Docker Image Configuration:"
+	@echo "  Registry:     $(DOCKER_REGISTRY)"
+	@echo "  Image Name:   $(DOCKER_IMAGE_NAME)"
+	@echo "  Git SHA:      $(GIT_SHA)"
+	@echo "  Tag:          $(DOCKER_TAG)"
+	@echo "  Full Image:   $(DOCKER_IMAGE)"
+	@echo "  Latest Tag:   $(DOCKER_IMAGE_LATEST)"
+	@echo ""
+	@echo "Override with:"
+	@echo "  make docker-build DOCKER_REGISTRY=ghcr.io DOCKER_IMAGE_NAME=ghcr.io/myuser/echo-server"
+
+docker-build: ## Build Docker image tagged with git SHA
+	@echo "Building Docker image: $(DOCKER_IMAGE)"
+	docker build -t $(DOCKER_IMAGE) -t $(DOCKER_IMAGE_LATEST) .
+	@echo "Successfully built: $(DOCKER_IMAGE)"
+	@echo "Also tagged as:     $(DOCKER_IMAGE_LATEST)"
+
+docker-push: docker-build ## Build and push Docker image to registry
+	@echo "Pushing Docker image: $(DOCKER_IMAGE)"
+	docker push $(DOCKER_IMAGE)
+	@echo "Pushing Docker image: $(DOCKER_IMAGE_LATEST)"
+	docker push $(DOCKER_IMAGE_LATEST)
+	@echo "Successfully pushed both tags"
+
+docker-run: docker-build ## Build and run Docker container in plain HTTP mode
+	@echo "Running Docker container: $(DOCKER_IMAGE)"
+	docker run --rm -p 8080:8080 $(DOCKER_IMAGE)
+
+docker-run-tls: docker-build dev-certs ## Build and run Docker container in TLS mode
+	@echo "Running Docker container with TLS: $(DOCKER_IMAGE)"
+	docker run --rm -p 8443:8443 \
+		-v /tmp/domain.pem:/certs/domain.pem:ro \
+		-v /tmp/domain.key:/certs/domain.key:ro \
+		$(DOCKER_IMAGE) \
+		-addr :8443 \
+		-tlsCert /certs/domain.pem \
+		-tlsKey /certs/domain.key
+
+docker-clean: ## Remove locally built Docker images
+	@echo "Removing Docker images..."
+	docker rmi $(DOCKER_IMAGE) $(DOCKER_IMAGE_LATEST) 2>/dev/null || true
+	@echo "Docker images removed"

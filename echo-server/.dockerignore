@@ -1,0 +1,45 @@
+# Binaries
+echo-server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Coverage files
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace file
+go.work
+
+# Temporary test certificates
+*.pem
+*.key
+!testdata/**/*.pem
+!testdata/**/*.key
+
+# Git
+.git
+.gitignore
+
+# Documentation (not needed in image)
+*.md
+!README.md
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
