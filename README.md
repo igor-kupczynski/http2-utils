@@ -4,11 +4,11 @@
 
 Install:
 
-    ❯  go get github.com/igor-kupczynski/http2-utils/echo-server
+    ❯  go install github.com/igor-kupczynski/http2-utils/echo-server@latest
 
 Profit:
 
-    ❯ echo-server -addr :8080 -healthcheck localhost:8081
+    ❯ echo-server -addr :8080 -healthCheck localhost:8081
     
     # In a different terminal (or a web browser)
     ❯ curl localhost:8080/foo
@@ -17,7 +17,7 @@ Profit:
 
 Install:
 
-    ❯  go get github.com/igor-kupczynski/http2-utils/http2-cli
+    ❯  go install github.com/igor-kupczynski/http2-utils/http2-cli@latest
 
 Profit:
 
@@ -48,14 +48,27 @@ Always close an incoming connection
 
 Install:
 
-    ❯  go get github.com/igor-kupczynski/http2-utils/too-many-requests
+    ❯  go install github.com/igor-kupczynski/http2-utils/too-many-requests@latest
 
 Profit:
 
-    ❯ too-many-requests -addr localhost:8080 -close -healthcheck localhost:8081
+    ❯ too-many-requests -addr localhost:8080 -close -healthCheck localhost:8081
     
     # In a different terminal (or a web browser)
     ❯ curl localhost:8080/foo
+
+
+## HTTP client stats
+
+Simple demo that logs client connection lifecycle events using `net/http/httptrace`.
+
+Install:
+
+    ❯  go install github.com/igor-kupczynski/http2-utils/http-client-stats@latest
+
+Profit:
+
+    ❯ http-client-stats
 
 
 ## Client TLS (mTLS)
