@@ -2,16 +2,26 @@
 
 ## Echo server for these random tests
 
+A minimal HTTP/HTTPS server that echoes the request path with a random number. Supports plain HTTP, TLS, and mutual TLS (mTLS) modes.
+
+**📖 [Full documentation](echo-server/README.md)**
+
 Install:
 
     ❯  go install github.com/igor-kupczynski/http2-utils/echo-server@latest
 
-Profit:
+Quick start:
 
     ❯ echo-server -addr :8080 -healthCheck localhost:8081
     
     # In a different terminal (or a web browser)
     ❯ curl localhost:8080/foo
+
+With TLS:
+
+    ❯ cd /tmp && selfsigned-gen -domains "localhost,127.0.0.1"
+    ❯ echo-server -addr :8443 -tlsCert /tmp/domain.pem -tlsKey /tmp/domain.key
+    ❯ curl --cacert /tmp/ca.pem https://localhost:8443/hello
 
 ## HTTP v2 CLI
 

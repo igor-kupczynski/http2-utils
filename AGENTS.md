@@ -19,15 +19,72 @@ GO111MODULE=on go install github.com/igor-kupczynski/http2-utils/http-client-sta
 ## Binaries and flags
 
 - echo-server
-  - Purpose: Minimal HTTP server that echoes path with a random number; optional healthcheck port.
+  - Purpose: Minimal HTTP/HTTPS server that echoes path with a random number. Supports plain HTTP, TLS, and mTLS modes. Includes `/client-certs` endpoint for inspecting client certificates.
   - Flags:
     - `-addr string` (default ":8080"): address to listen on
     - `-healthCheck string` (default ""): optional extra address for health checks
-  - Example:
+    - `-tlsCert string` (default ""): path to server cert PEM (requires `-tlsKey`)
+    - `-tlsKey string` (default ""): path to server key PEM (requires `-tlsCert`)
+    - `-mtlsMode string` (default ""): mTLS client-auth mode when TLS enabled: `request`, `verify_if_given`, `require_any`, `require_and_verify`
+    - `-clientCAs string` (default ""): path to PEM bundle of client CAs (required for `verify_if_given` and `require_and_verify` modes)
+  - Modes:
+    - Plain HTTP: when `-tlsCert` and `-tlsKey` are not provided
+    - TLS: when `-tlsCert` and `-tlsKey` are provided and `-mtlsMode` is empty
+    - mTLS: when `-tlsCert`, `-tlsKey`, and `-mtlsMode` are all provided
+    - Health check: uses plain HTTP or TLS (same as main server), but never mTLS
+  - Endpoints:
+    - `GET /`: echo handler returning path and random number
+    - `GET /client-certs`: returns client certificate details or "no client certificate"
+  - Examples:
     ```bash
-    echo-server -addr :8080 -healthCheck localhost:8081
-    # health: curl http://localhost:8081/
+    # Plain HTTP
+    echo-server -addr :8080 -healthCheck :8081
     curl http://localhost:8080/foo
+    curl http://localhost:8081/  # health check
+    
+    # TLS mode (generate certs first)
+    cd /tmp && selfsigned-gen -domains "localhost,127.0.0.1"
+    echo-server -addr :8443 -tlsCert /tmp/domain.pem -tlsKey /tmp/domain.key
+    curl --cacert /tmp/ca.pem https://localhost:8443/foo
+    curl --cacert /tmp/ca.pem https://localhost:8443/client-certs
+    
+    # mTLS mode (require and verify client certs)
+    echo-server \
+      -addr :8443 \
+      -healthCheck :8444 \
+      -tlsCert /tmp/domain.pem \
+      -tlsKey /tmp/domain.key \
+      -mtlsMode require_and_verify \
+      -clientCAs /tmp/ca.pem
+    
+    # Health check uses TLS but not mTLS
+    curl --cacert /tmp/ca.pem https://localhost:8444/
+    
+    # Main server requires client cert
+    curl --cacert /tmp/ca.pem \
+      --cert /tmp/domain.pem \
+      --key /tmp/domain.key \
+      https://localhost:8443/foo
+    
+    # Inspect client certificate
+    curl --cacert /tmp/ca.pem \
+      --cert /tmp/domain.pem \
+      --key /tmp/domain.key \
+      https://localhost:8443/client-certs
+    
+    # mTLS mode (request but don't verify)
+    echo-server \
+      -addr :8443 \
+      -tlsCert /tmp/domain.pem \
+      -tlsKey /tmp/domain.key \
+      -mtlsMode request
+    
+    # Works with or without client cert
+    curl --cacert /tmp/ca.pem https://localhost:8443/foo
+    curl --cacert /tmp/ca.pem \
+      --cert /tmp/domain.pem \
+      --key /tmp/domain.key \
+      https://localhost:8443/client-certs
     ```
 
 - http2-cli
