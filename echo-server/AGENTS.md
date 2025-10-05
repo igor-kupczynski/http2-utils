@@ -23,6 +23,63 @@ GO111MODULE=off go build
 
 # Or with modules (if go.mod exists in repo root)
 go build ./echo-server
+
+# Or using Makefile
+make build
+```
+
+## Makefile Targets
+
+The project includes a Makefile for automation-friendly builds and tests:
+
+```bash
+# Build
+make build             # Build the echo-server binary
+make install           # Install to GOPATH/bin
+
+# Testing
+make test              # Run all tests (unit + integration)
+make test-unit         # Run unit tests only
+make test-integration  # Run integration tests only
+make coverage          # Generate coverage report (coverage.html)
+
+# Code quality
+make fmt               # Format Go code
+make vet               # Run go vet
+make lint              # Run all linters (fmt + vet)
+
+# Development
+make run               # Build and run in plain HTTP mode on :8080
+make run-tls           # Build and run in TLS mode on :8443 (requires certs in /tmp)
+make run-mtls          # Build and run in mTLS mode on :8443 (requires certs in /tmp)
+make dev-certs         # Generate test certificates in /tmp using selfsigned-gen
+make dev-test          # Quick test cycle: build, start server, test, stop
+
+# Cleanup
+make clean             # Remove binaries, coverage files, and test certificates
+
+# Help
+make help              # Display all available targets
+```
+
+### Makefile Examples
+
+```bash
+# Complete development workflow
+cd echo-server
+make clean
+make build
+make test
+make coverage
+
+# Quick iteration
+make dev-certs         # Generate certs once
+make dev-test          # Quick test cycle
+
+# Run different modes
+make run               # Plain HTTP
+make run-tls           # TLS mode
+make run-mtls          # mTLS mode
 ```
 
 ## Quick Reference

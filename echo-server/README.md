@@ -2,6 +2,44 @@
 
 A minimal HTTP/HTTPS server that echoes the request path with a random number. Supports plain HTTP, TLS, and mutual TLS (mTLS) modes.
 
+## Installation
+
+### Install from source
+
+```bash
+GO111MODULE=on go install github.com/igor-kupczynski/http2-utils/echo-server@latest
+```
+
+### Build locally
+
+```bash
+cd echo-server
+make build
+# or
+go build
+```
+
+## Makefile Targets
+
+The project includes a Makefile for common development tasks:
+
+```bash
+make help              # Show all available targets
+make build             # Build the binary
+make test              # Run all tests
+make test-unit         # Run unit tests only
+make test-integration  # Run integration tests only
+make coverage          # Generate coverage report
+make fmt               # Format code
+make vet               # Run go vet
+make lint              # Run all linters
+make clean             # Remove build artifacts
+make run               # Build and run in HTTP mode
+make run-tls           # Build and run in TLS mode
+make run-mtls          # Build and run in mTLS mode
+make dev-certs         # Generate test certificates
+```
+
 ## Quickstart
 
 ### Plain HTTP
