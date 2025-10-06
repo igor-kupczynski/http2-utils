@@ -1,4 +1,4 @@
-name: echo-server Tests
+name: Test echo-server
 
 on:
   push:

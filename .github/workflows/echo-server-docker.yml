@@ -6,6 +6,7 @@ on:
     paths:
       - 'echo-server/**'
       - '.github/workflows/echo-server-docker.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
