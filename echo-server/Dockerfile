@@ -1,8 +1,12 @@
 # Multi-stage build for echo-server
 # Stage 1: Build the Go binary
-FROM golang:1.20-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
-# Install git for go get (if needed)
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ARG TARGETVARIANT
+
+# Install git for go tools and ensure certificates available for downloads
 RUN apk add --no-cache git ca-certificates
 
 WORKDIR /build
@@ -10,10 +14,15 @@ WORKDIR /build
 # Copy the source code
 COPY . .
 
-# Build the binary with static linking
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=off \
-    go build -a -installsuffix cgo -ldflags '-extldflags "-static"' \
-    -o echo-server .
+# Build the binary for the requested target platform
+RUN set -eux; \
+    export CGO_ENABLED=0; \
+    export GOOS="${TARGETOS}"; \
+    export GOARCH="${TARGETARCH}"; \
+    if [ "${TARGETARCH}" = "arm" ] && [ -n "${TARGETVARIANT}" ]; then \
+      export GOARM="${TARGETVARIANT#v}"; \
+    fi; \
+    go build -trimpath -ldflags "-s -w" -o echo-server .
 
 # Stage 2: Create minimal runtime image
 FROM scratch
