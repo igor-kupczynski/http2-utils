@@ -41,7 +41,7 @@ make install           # Install to GOPATH/bin
 make test              # Run all tests (unit + integration)
 make test-unit         # Run unit tests only
 make test-integration  # Run integration tests only
-make coverage          # Generate coverage report (coverage.html)
+make coverage          # Generate unit + integration coverage summaries
 
 # Code quality
 make fmt               # Format Go code

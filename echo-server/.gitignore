@@ -13,6 +13,7 @@ echo-server
 *.out
 coverage.txt
 coverage.html
+*.cover
 
 # Go workspace file
 go.work
