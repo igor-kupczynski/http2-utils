@@ -32,11 +32,12 @@ jobs:
           go-version-file: echo-server/go.mod
 
       - name: Build binary
+        working-directory: echo-server
         run: |
-          mkdir -p dist
-          OUTPUT=dist/echo-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          mkdir -p ../dist
+          OUTPUT=../dist/echo-server-${{ matrix.goos }}-${{ matrix.goarch }}
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
-            go build -trimpath -ldflags "-s -w" -o "${OUTPUT}" ./echo-server
+            go build -trimpath -ldflags "-s -w" -o "${OUTPUT}" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
