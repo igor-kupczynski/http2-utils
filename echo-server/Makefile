@@ -8,7 +8,7 @@ BINARY_NAME := echo-server
 
 # Docker parameters
 DOCKER_REGISTRY ?= docker.io
-DOCKER_IMAGE_NAME ?= $(DOCKER_REGISTRY)/$(shell whoami)/echo-server
+DOCKER_IMAGE_NAME ?= $(DOCKER_REGISTRY)/ikupczynski/echo-server
 GIT_SHA := $(shell git rev-parse --short HEAD)
 DOCKER_TAG ?= $(GIT_SHA)
 DOCKER_IMAGE := $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
