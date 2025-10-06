@@ -1,9 +1,10 @@
+# syntax=docker/dockerfile:1.6
 # Multi-stage build for echo-server
 # Stage 1: Build the Go binary
-FROM golang:1.22-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS builder
 
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
 ARG TARGETVARIANT
 
 # Install git for go tools and ensure certificates available for downloads
@@ -16,12 +17,9 @@ COPY . .
 
 # Build the binary for the requested target platform
 RUN set -eux; \
-    export CGO_ENABLED=0; \
-    export GOOS="${TARGETOS}"; \
-    export GOARCH="${TARGETARCH}"; \
-    if [ "${TARGETARCH}" = "arm" ] && [ -n "${TARGETVARIANT}" ]; then \
-      export GOARM="${TARGETVARIANT#v}"; \
-    fi; \
+    GOARM_ARG=""; \
+    if [ "${TARGETARCH}" = "arm" ] && [ -n "${TARGETVARIANT}" ]; then GOARM_ARG="GOARM=${TARGETVARIANT#v}"; fi; \
+    CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" ${GOARM_ARG} \
     go build -trimpath -ldflags "-s -w" -o echo-server .
 
 # Stage 2: Create minimal runtime image
