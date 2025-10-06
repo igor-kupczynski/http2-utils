@@ -44,15 +44,17 @@ install: ## Install echo-server to GOPATH/bin
 test: test-unit test-integration ## Run all tests (unit + integration)
 
 test-unit: ## Run unit tests only
-	$(GOTEST) $(TEST_FLAGS) -run '^Test[^I]' .
+	$(GOTEST) $(TEST_FLAGS) ./...
 
 test-integration: ## Run integration tests only
-	$(GOTEST) $(TEST_FLAGS) -run '^TestIntegration' .
+	$(GOTEST) $(TEST_FLAGS) -tags integration ./...
 
 coverage: ## Generate test coverage report
-	$(GOTEST) $(COVERAGE_FLAGS) .
-	$(GOCMD) tool cover -html=coverage.txt -o coverage.html
-	@echo "Coverage report generated: coverage.html"
+	$(GOTEST) -coverprofile=unit.cover -covermode=atomic ./...
+	$(GOCMD) tool cover -func=unit.cover
+	$(GOTEST) -tags integration -coverprofile=integration.cover -covermode=atomic ./...
+	$(GOCMD) tool cover -func=integration.cover
+	@echo "Coverage summaries generated: unit.cover integration.cover"
 
 fmt: ## Format Go code
 	$(GOFMT) ./...
@@ -65,7 +67,7 @@ lint: fmt vet ## Run formatters and linters
 clean: ## Remove build artifacts and test files
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
-	rm -f coverage.txt coverage.html
+	rm -f coverage.txt coverage.html unit.cover integration.cover
 	rm -f *.pem *.key
 
 run: build ## Build and run echo-server in plain HTTP mode

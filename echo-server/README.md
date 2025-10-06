@@ -56,7 +56,7 @@ make build             # Build the binary
 make test              # Run all tests
 make test-unit         # Run unit tests only
 make test-integration  # Run integration tests only
-make coverage          # Generate coverage report
+make coverage          # Generate unit + integration coverage summaries
 make fmt               # Format code
 make vet               # Run go vet
 make lint              # Run all linters

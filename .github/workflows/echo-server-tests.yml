@@ -20,34 +20,34 @@ on:
 
 jobs:
   test:
-    name: Integration Tests
+    name: Unit and Integration Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.20'
-      
-      - name: Build selfsigned-gen (dependency for tests)
-        run: |
-          cd selfsigned-gen
-          GO111MODULE=off go build -o selfsigned-gen
-          echo "$PWD" >> $GITHUB_PATH
-        
+
       - name: Run unit tests
         working-directory: echo-server
-        run: go test -v -race -run '^Test[^I]' .
-      
+        run: go test -v -race .
+
       - name: Run integration tests
         working-directory: echo-server
-        run: go test -v -race -timeout 5m .
-      
-      - name: Generate coverage report
+        run: go test -v -race -tags integration -timeout 5m .
+
+      - name: Unit test coverage
         working-directory: echo-server
         run: |
-          go test -coverprofile=coverage.txt -covermode=atomic .
-          go tool cover -func=coverage.txt
+          go test -coverprofile=unit.cover -covermode=atomic .
+          go tool cover -func=unit.cover
+
+      - name: Integration test coverage
+        working-directory: echo-server
+        run: |
+          go test -tags integration -coverprofile=integration.cover -covermode=atomic .
+          go tool cover -func=integration.cover
