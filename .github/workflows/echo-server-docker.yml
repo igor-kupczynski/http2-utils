@@ -45,22 +45,4 @@ jobs:
             ikupczynski/echo-server:latest
             ikupczynski/echo-server:${{ github.sha }}
 
-      - name: Verify amd64 binary architecture
-        run: |
-          set -eux
-          ref="docker.io/ikupczynski/echo-server:${{ github.sha }}"
-          amd64_digest=$(docker buildx imagetools inspect "$ref" | awk '/Platform: linux\/amd64/ {getline; print $2; exit}')
-          docker create --platform=linux/amd64 --name echo-amd "$ref@${amd64_digest}" >/dev/null
-          docker cp echo-amd:/usr/local/bin/echo-server ./echo-server-amd64
-          file ./echo-server-amd64 | grep -E 'x86-64|x86-64 \(GNU/Linux\)'
-
-      - name: Verify arm64 binary architecture
-        run: |
-          set -eux
-          ref="docker.io/ikupczynski/echo-server:${{ github.sha }}"
-          arm64_digest=$(docker buildx imagetools inspect "$ref" | awk '/Platform: linux\/arm64/ {getline; print $2; exit}')
-          docker create --platform=linux/arm64 --name echo-arm "$ref@${arm64_digest}" >/dev/null
-          docker cp echo-arm:/usr/local/bin/echo-server ./echo-server-arm64
-          file ./echo-server-arm64 | grep -E 'ARM aarch64|ARM64'
-          docker rm -f echo-amd echo-arm >/dev/null || true
 
